@@ -27,6 +27,8 @@ jobs:
           install: git base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake
           path-type: inherit
       - name: Build artifacts
+        env:
+          CGO_CFLAGS: "-std=gnu89"
         run: make GOOS=windows GOARCH=amd64 setup
       - name: Hash artifacts
         run: sha256sum dist/*
@@ -52,6 +54,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libx11-dev xorg-dev libxtst-dev libpng++-dev xcb libxcb-xkb-dev x11-xkb-utils libx11-xcb-dev libxkbcommon-x11-dev libxkbcommon-dev xsel xclip
       - name: Build artifacts
+        env:
+          CGO_CFLAGS: "-std=gnu89"
         run: make GOOS=linux GOARCH=arm64 setup
       - name: Hash artifacts
         run: sha256sum dist/*
