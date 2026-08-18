@@ -1,32 +1,33 @@
 name: CI
 
 on:
-  - push
-  - workflow_dispatch
+  push:
+  workflow_dispatch:
 
 jobs:
   build_windows_amd64:
     name: Build for Windows 64-bit
-    runs-on: windows-2025
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
     steps:
       - name: Clone repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
           go-version: '1.13.7'
       - name: Setup MSYS
-        uses: numworks/setup-msys2@v1
+        uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          path-type: inherit
           update: true
-      - name: Install dependencies
-        run: msys2do pacman --noconfirm -S --needed git base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake
+          install: git base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake
       - name: Build artifacts
         env:
           PATH: ''
-        run: msys2do make GOOS=windows GOARCH=amd64 setup
+        run: make GOOS=windows GOARCH=amd64 setup
       - name: Hash artifacts
         run: sha256sum dist/*
       - name: Upload artifacts
@@ -34,43 +35,15 @@ jobs:
         with:
           name: buster-client-windows-amd64
           path: dist/
-  build_windows_386:
-    name: Build for Windows 32-bit
-    runs-on: windows-2025
-    steps:
-      - name: Clone repository
-        uses: actions/checkout@v5
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.13.7'
-      - name: Setup MSYS
-        uses: numworks/setup-msys2@v1
-        with:
-          msystem: MINGW32
-          path-type: inherit
-          update: true
-      - name: Install dependencies
-        run: msys2do pacman --noconfirm -S --needed git base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake
-      - name: Build artifacts
-        env:
-          PATH: ''
-        run: msys2do make GOOS=windows GOARCH=386 setup
-      - name: Hash artifacts
-        run: sha256sum dist/*
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: buster-client-windows-386
-          path: dist/
+
   build_linux_amd64:
     name: Build for Linux
     runs-on: ubuntu-24.04
     steps:
       - name: Clone repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
           go-version: '1.13.7'
       - name: Install dependencies
@@ -86,14 +59,15 @@ jobs:
         with:
           name: buster-client-linux-amd64
           path: dist/
+
   build_linux_arm64:
     name: Build for Linux Arm
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Clone repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
           go-version: '1.13.7'
       - name: Install dependencies
@@ -109,88 +83,32 @@ jobs:
         with:
           name: buster-client-linux-arm64
           path: dist/
-  build_macos_amd64:
-    name: Build for macOS x64
-    runs-on: macos-15-large
-    steps:
-      - name: Clone repository
-        uses: actions/checkout@v5
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.13.7'
-      - name: Build artifacts
-        run: make GOOS=darwin GOARCH=amd64 setup
-      - name: Hash artifacts
-        run: shasum -a 256 dist/*
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: buster-client-macos-arm64
-          path: dist/
-  build_macos_arm64:
-    name: Build for macOS
-    runs-on: macos-15
-    steps:
-      - name: Clone repository
-        uses: actions/checkout@v5
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.13.7'
-      - name: Build artifacts
-        run: make GOOS=darwin GOARCH=arm64 setup
-      - name: Hash artifacts
-        run: shasum -a 256 dist/*
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: buster-client-macos-arm64
-          path: dist/
+
   release:
     name: Release on GitHub
     runs-on: ubuntu-24.04
     needs:
-      [
-        build_windows_amd64,
-        build_windows_386,
-        build_linux_amd64,
-        build_macos_amd64,
-      ]
+      - build_windows_amd64
+      - build_linux_amd64
+      - build_linux_arm64
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Clone repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
       - name: Get release version
-        id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
       - name: Download artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v4
         with:
-          name: buster-client-windows-amd64
           path: dist/
-      - name: Download artifacts
-        uses: actions/download-artifact@v5
-        with:
-          name: buster-client-windows-386
-          path: dist/
-      - name: Download artifacts
-        uses: actions/download-artifact@v5
-        with:
-          name: buster-client-linux-amd64
-          path: dist/
-      - name: Download artifacts
-        uses: actions/download-artifact@v5
-        with:
-          name: buster-client-macos-amd64
-          path: dist/
+          merge-multiple: true
       - name: Hash artifacts
         run: sha256sum dist/*
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.get_version.outputs.VERSION }}
-          name: ${{ steps.get_version.outputs.VERSION }}
+          tag_name: ${{ env.VERSION }}
+          name: ${{ env.VERSION }}
           body: |
             Learn more about this release from the [changelog](https://github.com/dessant/buster-client/blob/master/CHANGELOG.md#changelog).
           files: dist/*
