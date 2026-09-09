@@ -7,5 +7,5 @@ require (
 	github.com/robotn/gohook v0.0.0-20200205143957-aea663e2b531 // indirect
 	github.com/shirou/gopsutil v2.20.1+incompatible // indirect
 	github.com/vcaesar/imgo v0.0.0-20200129165932-716c899edf4c // indirect
-	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5 // indirect
+	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
 )
